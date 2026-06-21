@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小六壬 · 掐指起卦</title>
+<script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.js"></script>
+<style>
+  :root{
+    --bg:#14110f; --panel:#1d1916; --panel2:#252019;
+    --ink:#e9e1d2; --ink-dim:#a89b86; --line:#3a3228;
+    --zhu:#c0392b; --zhu-soft:#e0796b;
+    --gold:#c9a24b; --jade:#5fa888;
+    --good:#5fa888; --bad:#c0392b; --mid:#c9a24b;
+    --shadow:0 10px 40px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:radial-gradient(1200px 700px at 50% -10%,#221c16,#14110f 60%);
+    color:var(--ink); font-family:"Noto Serif SC","Songti SC",STSong,"SimSun",serif;
+    min-height:100vh; padding:28px 16px 64px;
+  }
+  .wrap{max-width:760px; margin:0 auto}
+  header{text-align:center; margin-bottom:22px}
+  header h1{
+    font-size:30px; letter-spacing:.35em; margin:0 0 6px;
+    color:var(--ink); text-indent:.35em;
+  }
+  header .sub{color:var(--ink-dim); font-size:13px; letter-spacing:.25em}
+  .seal{
+    display:inline-block; margin-top:10px; color:var(--zhu); border:1.5px solid var(--zhu);
+    border-radius:6px; padding:2px 10px; font-size:12px; letter-spacing:.3em;
+  }
+
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line); border-radius:14px; padding:20px;
+    box-shadow:var(--shadow); margin-bottom:18px;
+  }
+  .label{font-size:13px; color:var(--gold); letter-spacing:.2em; margin-bottom:10px}
+  textarea,input,select{
+    width:100%; background:#12100d; color:var(--ink); border:1px solid var(--line);
+    border-radius:9px; padding:11px 12px; font-family:inherit; font-size:15px; outline:none;
+  }
+  textarea{resize:vertical; min-height:54px}
+  textarea:focus,input:focus,select:focus{border-color:var(--gold)}
+  .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  .row>div{flex:1; min-width:120px}
+  .hint{font-size:12px; color:var(--ink-dim); margin-top:5px; line-height:1.6}
+
+  .tabs{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap}
+  .tab{
+    flex:1; min-width:120px; text-align:center; padding:10px 8px; cursor:pointer;
+    background:#15120f; border:1px solid var(--line); border-radius:10px;
+    color:var(--ink-dim); font-size:14px; letter-spacing:.1em; transition:.15s;
+  }
+  .tab.on{color:var(--ink); border-color:var(--gold); background:#221c14; box-shadow:inset 0 0 0 1px rgba(201,162,75,.25)}
+  .pane{display:none} .pane.on{display:block}
+
+  .btn{
+    display:block; width:100%; margin-top:16px; padding:14px; cursor:pointer;
+    background:linear-gradient(180deg,var(--zhu),#9c2b20); color:#fff5ee; border:none;
+    border-radius:11px; font-family:inherit; font-size:17px; letter-spacing:.45em; text-indent:.45em;
+    box-shadow:0 6px 18px rgba(192,57,43,.35);
+  }
+  .btn:active{transform:translateY(1px)}
+
+  /* result */
+  #result{display:none}
+  .qline{color:var(--ink-dim); font-size:13px; margin-bottom:4px; letter-spacing:.05em}
+  .castinfo{color:var(--gold); font-size:12px; margin-bottom:16px; letter-spacing:.05em}
+  .three{display:flex; gap:10px; margin-bottom:18px}
+  .palace{
+    flex:1; text-align:center; border:1px solid var(--line); border-radius:12px;
+    padding:14px 8px 12px; background:#15120f; position:relative;
+  }
+  .palace .stage{font-size:11px; color:var(--ink-dim); letter-spacing:.15em}
+  .palace .nm{font-size:26px; margin:8px 0 4px; letter-spacing:.15em}
+  .palace .meta{font-size:11px; color:var(--ink-dim); line-height:1.7}
+  .palace.final{border-color:var(--gold); box-shadow:0 0 0 1px rgba(201,162,75,.3), 0 8px 22px rgba(0,0,0,.4)}
+  .palace.final::after{content:"主卦"; position:absolute; top:-9px; left:50%; transform:translateX(-50%);
+    background:var(--gold); color:#1a140a; font-size:10px; padding:1px 8px; border-radius:10px; letter-spacing:.1em}
+  .luck{display:inline-block; font-size:11px; padding:1px 8px; border-radius:9px; margin-top:6px}
+  .luck.good{color:var(--good); border:1px solid var(--good)}
+  .luck.bad{color:var(--zhu-soft); border:1px solid var(--bad)}
+  .luck.mid{color:var(--mid); border:1px solid var(--mid)}
+
+  .reading h3{font-size:15px; color:var(--gold); letter-spacing:.2em; margin:18px 0 8px;
+    border-left:3px solid var(--zhu); padding-left:10px}
+  .poem{color:var(--ink-dim); font-size:13px; line-height:1.9; font-style:italic;
+    background:#12100d; border:1px dashed var(--line); border-radius:9px; padding:10px 12px; margin:6px 0 12px}
+  .overall{line-height:2; font-size:15px}
+  .aspect{margin:6px 0; line-height:1.8; font-size:14px}
+  .aspect b{color:var(--jade); font-weight:normal; margin-right:8px; letter-spacing:.05em}
+  .focus{background:rgba(201,162,75,.1); border-radius:6px; padding:2px 6px}
+  .disclaim{color:var(--ink-dim); font-size:11px; text-align:center; margin-top:24px; line-height:1.8; letter-spacing:.05em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>小六壬</h1>
+    <div class="sub">大安 · 留连 · 速喜 · 赤口 · 小吉 · 空亡</div>
+    <div class="seal">掐指占卜</div>
+  </header>
+
+  <div class="card">
+    <div class="label">所问之事</div>
+    <textarea id="q" placeholder="心中默念所问之事，简述于此（如：本月求财是否顺利？）"></textarea>
+    <div class="row">
+      <div>
+        <select id="topic">
+          <option value="综合">事项 · 综合</option>
+          <option value="求财">求财 · 财运</option>
+          <option value="事业">事业 · 求谋</option>
+          <option value="婚姻">婚姻 · 感情</option>
+          <option value="出行">出行 · 远行</option>
+          <option value="健康">健康 · 疾病</option>
+          <option value="失物">失物 · 寻人</option>
+          <option value="诉讼">诉讼 · 是非</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab on" data-mode="time">时辰起卦</div>
+      <div class="tab" data-mode="num">报数起卦</div>
+      <div class="tab" data-mode="rand">随机起卦</div>
+    </div>
+
+    <div class="pane on" data-pane="time">
+      <div class="hint" id="lunarNow">正在读取当前农历时辰…</div>
+      <div class="hint">以当前农历「月、日、时辰」掐指起卦——这是小六壬最传统的方式。心诚则灵，问前先静心默念所问之事。</div>
+    </div>
+
+    <div class="pane" data-pane="num">
+      <div class="hint">心中默念所问，随意报出三个数字（任意大小皆可，凭直觉）。</div>
+      <div class="row">
+        <div><input id="n1" type="number" placeholder="第一数"></div>
+        <div><input id="n2" type="number" placeholder="第二数"></div>
+        <div><input id="n3" type="number" placeholder="第三数"></div>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="rand">
+      <div class="hint">默念所问之事，由天机随机定数起卦。</div>
+    </div>
+
+    <button class="btn" id="go">起　卦</button>
+  </div>
+
+  <div class="card" id="result">
+    <div class="qline" id="rq"></div>
+    <div class="castinfo" id="rcast"></div>
+    <div class="three" id="rthree"></div>
+    <div class="reading" id="rreading"></div>
+  </div>
+
+  <div class="disclaim">小六壬源自术数传统，所断为思路启发，非宿命定论。<br>真正定夺，仍在你心中权衡。</div>
+</div>
+
+<script>
+/* ---------- 六宫数据 ---------- */
+const PAL = [
+  { name:"大安", god:"青龙", el:"木", dir:"东方", luck:"good", key:"安稳·不动",
+    poem:"大安事事昌，求财在坤方，失物去不远，宅舍保安康；行人身未动，病者主无妨，欲知行人处，定是未还乡。",
+    num:"一·五·七", time:"应期较缓，三五日内，或属木之日（寅卯）",
+    asp:{
+      综合:"主静、稳、安。事情平稳无大碍，宜守不宜进，按兵不动反得安康。心安则事安。",
+      求财:"财在西南（坤方），求之有得但来得不急，宜守成、忌冒进；正财稳，偏财缓。",
+      事业:"局面稳定，谋事可成但宜缓图，守正待时为上，不宜大动作。",
+      婚姻:"感情安稳和顺，多为良缘，宜稳步推进，不必急。",
+      出行:"身未动，行人尚未启程或归期较晚；出行平安，但行程偏慢。",
+      健康:"病情无妨，多属小恙、可安康，调养静养即愈。",
+      失物:"失物未远，仍在原处或近处，往西南方向、屋内寻之可得。",
+      诉讼:"宜和解、宜拖缓，静则无事，不宜主动兴讼。"
+    }},
+  { name:"留连", god:"玄武", el:"水", dir:"北方", luck:"bad", key:"拖延·暗昧",
+    poem:"留连事难成，求谋日未明，官事只宜缓，去者未回程；失物南方见，急讨方称心，更须防口舌，人事且勿凭。",
+    num:"二·八·十", time:"应期迟缓、反复，须等时日，或属水之日（亥子）",
+    asp:{
+      综合:"主拖延、纠缠、反复、暗昧不明。事情一时难成，牵连缠绕、进展迟滞，宜耐心等待，忌操之过急。",
+      求财:"求财艰难、利益不明，钱财有牵连或被拖欠，宜缓图、防纠葛，急则无功。",
+      事业:"谋事日未明、多阻滞反复，需长期周旋，短期难见分晓。",
+      婚姻:"感情拖泥带水、藕断丝连，或有第三方牵连，进展缓慢需耐心。",
+      出行:"行人未归、归期一再延后；出行多阻滞，不宜远行。",
+      健康:"病情缠绵反复、迁延难愈，宜细心调理，防转为旧疾。",
+      失物:"失物一时难寻，或被搁置、被人暗藏，往南方慢慢追讨方有眉目。",
+      诉讼:"官事拖延、纠缠不清，宜缓不宜急，更须防口舌是非牵连。"
+    }},
+  { name:"速喜", god:"朱雀", el:"火", dir:"南方", luck:"good", key:"快速·喜讯",
+    poem:"速喜喜来临，求财向南行，失物申未午，逢人路上寻；官事有福德，病者无须惊，田宅六畜吉，行人有音信。",
+    num:"三·六·九", time:"应期最速，一两日内见分晓，或午时、属火之日",
+    asp:{
+      综合:"主快速、喜讯、好消息将至。事情进展迅速，多有喜庆、贵人相逢，宜把握时机、当机立断。",
+      求财:"财来得快，向南方求之有喜，多为意外之财或近期到手，宜速行。",
+      事业:"谋事迅速可成，有福德相助，近期即有好消息，宜趁势而上。",
+      婚姻:"喜讯临门，姻缘速成，多有人传好音、路上逢喜。",
+      出行:"行人有音信、即将归来；出行顺利，宜往南方，行程顺速。",
+      健康:"病者无须惊，多为小病速愈；但火主急，急症宜及时就医。",
+      失物:"失物可寻，在午未申方向或路上、近处，速寻可得。",
+      诉讼:"官事有福德庇佑，多得善了、化解迅速，结果偏吉。"
+    }},
+  { name:"赤口", god:"白虎", el:"金", dir:"西方", luck:"bad", key:"口舌·惊恐",
+    poem:"赤口主口舌，官非切要防，失物急去觅，行人有惊慌；鸡犬多作怪，病者赴西方，须防恶人陷，恐怕染瘟殃。",
+    num:"四·七·九", time:"应期带惊带急，属金之日（申酉）须留意",
+    asp:{
+      综合:"主口舌、是非、争执、惊恐。事多波折冲突，易招争吵官非，凡事须忍让、防小人，谨言慎行为上。",
+      求财:"求财易起争执、因财失和，钱财上防被算计、防纠纷，不宜与人争利。",
+      事业:"谋事多阻力与口舌，易遇竞争、是非、小人作梗，宜低调防范。",
+      婚姻:"感情多口角争执、易生误会冲突，宜克制脾气、以和为贵。",
+      出行:"行人有惊慌；出行防口角、防意外惊险，宜谨慎，往西方尤须留意。",
+      健康:"病在西方，须防急症、外伤、惊吓，宜及时诊治、勿惊慌乱投医。",
+      失物:"失物多因人为，急去寻方有望，迟则难回，留意是否被人取走。",
+      诉讼:"官非口舌当头，最易起争讼，务必谨慎防范、勿逞口舌，宜忍让化解。"
+    }},
+  { name:"小吉", god:"六合", el:"木", dir:"东南", luck:"good", key:"和合·顺遂",
+    poem:"小吉最吉昌，路上好商量，阴人来报喜，失物在坤方；行人即便至，交易甚是强，凡事皆和合，病者祈上苍。",
+    num:"一·五·七", time:"应期较顺，不久即应，属木之日（寅卯）",
+    asp:{
+      综合:"主和合、顺遂、贵人相助。诸事和谐圆满，易得人助、宜合作商量，凡事皆可成，是上佳之兆。",
+      求财:"求财顺利，合伙、商谈皆有利，财在西南，多得他人相助而成。",
+      事业:"谋事顺遂和合，宜合作共事，多有贵人（尤以女性/阴人）相助。",
+      婚姻:"姻缘和合美满，有人作合报喜，是成婚良缘之兆。",
+      出行:"行人即至、归来在即；出行顺利，路上有人相帮、好商量。",
+      健康:"病情向好、可渐愈，宜安心调养并祈福，多无大碍。",
+      失物:"失物可寻回，在西南方，或经人帮助、商量后得见。",
+      诉讼:"官事易得和解、调停了结，宜以和为贵，结果和合偏吉。"
+    }},
+  { name:"空亡", god:"勾陈", el:"土", dir:"中央", luck:"bad", key:"落空·虚耗",
+    poem:"空亡事不祥，阴人多乖张，求财无利益，行人有灾殃；失物寻不见，官事有刑伤，病人逢暗鬼，祈解可安康。",
+    num:"五·十·〇", time:"应期落空、无期，事多虚耗，宜另择时另谋",
+    asp:{
+      综合:"主落空、虚无、白费、不顺。事多成空、徒劳无功，所谋难遂，宜放下执念、改弦更张，另寻他途为上。",
+      求财:"求财无利、多为空欢喜，易破财虚耗，不宜投入，谨防上当落空。",
+      事业:"谋事易落空、半途而废，所图难成，宜暂缓或转向，勿强求。",
+      婚姻:"感情多虚情或难有结果，易生隔阂、聚少离多，宜审慎勿强求。",
+      出行:"行人有灾殃、归期渺茫；出行不利，易有变故，宜延期或取消。",
+      健康:"病情费解、反复缠人（逢暗鬼），宜细查、勿讳疾，并宽心祈解。",
+      失物:"失物难寻、多寻不见，恐已遗失无踪，不必过于执着。",
+      诉讼:"官事不利、恐有刑伤损耗，凡事落空，宜尽早抽身、化解为上。"
+    }}
+];
+
+/* ---------- 起卦核心 ---------- */
+// 三宫：n1从大安起数 → i1；自i1续数n2 → i2；自i2续数n3 → i3（主卦）
+function cast(n1,n2,n3){
+  const i1=((n1-1)%6+6)%6;
+  const i2=((i1+(n2-1))%6+6)%6;
+  const i3=((i2+(n3-1))%6+6)%6;
+  return [i1,i2,i3];
+}
+const ZHI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+
+let curLunar=null;
+function readLunar(){
+  const el=document.getElementById('lunarNow');
+  if(typeof Solar==='undefined'){
+    el.innerHTML="⚠ 未能加载农历库（可能离线）。时辰起卦不可用，请改用「报数」或「随机」起卦。";
+    return;
+  }
+  const now=new Date();
+  const lunar=Solar.fromDate(now).getLunar();
+  const m=Math.abs(lunar.getMonth());
+  const d=lunar.getDay();
+  const zhi=lunar.getTimeZhi();
+  const hnum=ZHI.indexOf(zhi)+1;
+  curLunar={m,d,hnum,zhi,
+    text:`农历 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()} · ${zhi}时（${lunar.getYearInGanZhi()}年）`};
+  el.innerHTML="当前："+curLunar.text+`　→　月${m}·日${d}·时${hnum}`;
+}
+
+/* ---------- UI ---------- */
+let mode='time';
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    mode=t.dataset.mode;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===mode));
+  };
+});
+
+document.getElementById('go').onclick=()=>{
+  let n1,n2,n3,castDesc;
+  if(mode==='time'){
+    if(!curLunar){ alert('农历时辰未就绪，请改用报数或随机起卦。'); return; }
+    n1=curLunar.m; n2=curLunar.d; n3=curLunar.hnum;
+    castDesc=`时辰起卦 · ${curLunar.text}（月${n1} · 日${n2} · ${curLunar.zhi}时${n3}）`;
+  } else if(mode==='num'){
+    n1=parseInt(document.getElementById('n1').value);
+    n2=parseInt(document.getElementById('n2').value);
+    n3=parseInt(document.getElementById('n3').value);
+    if(!(n1>0&&n2>0&&n3>0)){ alert('请输入三个正整数。'); return; }
+    castDesc=`报数起卦 · 数 ${n1} · ${n2} · ${n3}`;
+  } else {
+    n1=Math.floor(Math.random()*30)+1;
+    n2=Math.floor(Math.random()*30)+1;
+    n3=Math.floor(Math.random()*30)+1;
+    castDesc=`随机起卦 · 天机定数 ${n1} · ${n2} · ${n3}`;
+  }
+  render(cast(n1,n2,n3),castDesc);
+};
+
+function luckWord(l){return l==='good'?'吉':l==='bad'?'凶':'中'}
+function render(idx,castDesc){
+  const q=document.getElementById('q').value.trim();
+  const topic=document.getElementById('topic').value;
+  const stages=["第一卦 · 起因（天时）","第二卦 · 经过（人事）","第三卦 · 结果（人和）"];
+
+  document.getElementById('rq').textContent = q?("所问：　"+q):"所问：　（未填，泛断）";
+  document.getElementById('rcast').textContent = castDesc;
+
+  // 三宫卡片
+  document.getElementById('rthree').innerHTML = idx.map((ci,k)=>{
+    const p=PAL[ci];
+    return `<div class="palace ${k===2?'final':''}">
+      <div class="stage">${stages[k].split('·')[0]}</div>
+      <div class="nm">${p.name}</div>
+      <div class="luck ${p.luck}">${luckWord(p.luck)}</div>
+      <div class="meta">${p.god}·${p.el}·${p.dir}<br>${p.key}</div>
+    </div>`;
+  }).join('');
+
+  // 解读
+  const final=PAL[idx[2]], first=PAL[idx[0]], mid=PAL[idx[1]];
+  const aspKey = topic==='综合'?'综合':(topic==='事业'?'事业':topic==='健康'?'健康':topic);
+  let html='';
+
+  html+=`<h3>卦象总断</h3>`;
+  html+=`<div class="overall">`;
+  html+=`此卦起于「<b style="color:var(--ink)">${first.name}</b>」（${luckWord(first.luck)}），`;
+  html+=`中经「<b style="color:var(--ink)">${mid.name}</b>」（${luckWord(mid.luck)}），`;
+  html+=`终归「<b style="color:var(--gold)">${final.name}</b>」（${luckWord(final.luck)}）。`;
+  const goods=idx.filter(i=>PAL[i].luck==='good').length;
+  let tone;
+  if(final.luck==='good'&&goods>=2) tone="结果落于吉宫，前路向好，整体趋吉，宜顺势把握。";
+  else if(final.luck==='good') tone="过程虽有波折，然结果落于吉宫，终能转圜向好，宜坚持。";
+  else if(final.luck==='bad'&&goods===0) tone="三宫皆滞，结果落于凶宫，事多不顺，宜守宜退、勿强求。";
+  else if(final.luck==='bad') tone="起步尚可，然结果落于凶宫，须防虎头蛇尾、慎防后段生变。";
+  else tone="结果平平，吉凶参半，关键在于人事经营。";
+  html+=tone+`</div>`;
+
+  html+=`<h3>主卦 · ${final.name}（${final.god}·${final.el}·${final.dir}）</h3>`;
+  html+=`<div class="poem">${final.poem}</div>`;
+
+  // 针对所问事项
+  html+=`<h3>${topic==='综合'?'分事详断':'就「'+topic+'」而断'}</h3>`;
+  if(topic==='综合'){
+    const order=['综合','求财','事业','婚姻','出行','健康','失物','诉讼'];
+    order.forEach(a=>{
+      html+=`<div class="aspect"><b>${a}</b>${final.asp[a]}</div>`;
+    });
+  }else{
+    html+=`<div class="aspect focus"><b>${aspKey}</b>${final.asp[aspKey]||final.asp['综合']}</div>`;
+    html+=`<div class="aspect"><b>综合</b>${final.asp['综合']}</div>`;
+  }
+
+  html+=`<h3>应期与方位</h3>`;
+  html+=`<div class="aspect"><b>方位</b>${final.dir}（${final.el}）　利数：${final.num}</div>`;
+  html+=`<div class="aspect"><b>应期</b>${final.time}</div>`;
+
+  html+=`<h3>启示</h3>`;
+  html+=`<div class="aspect">${adviceFor(final, mid, first, topic)}</div>`;
+
+  document.getElementById('rreading').innerHTML=html;
+  const r=document.getElementById('result');
+  r.style.display='block';
+  r.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function adviceFor(f,m,first,topic){
+  const map={
+    "大安":"静守为上，安心待时，莫因焦躁而妄动。",
+    "留连":"耐心周旋，理清纠葛，切忌操切求成。",
+    "速喜":"机会就在眼前，宜当机立断、把握时机。",
+    "赤口":"谨言慎行，忍一时之气，远是非、防小人。",
+    "小吉":"主动求人相助、合作商量，和气能成事。",
+    "空亡":"放下执念，及时止损或另谋他途，勿在空处用力。"
+  };
+  return `主卦${f.name}提示你：${map[f.name]}　起势为${first.name}、过程为${m.name}，可见${first.luck==='good'?'起步顺':'起步需谨慎'}、${m.luck==='good'?'过程有助':'过程多阻'}——成事关键在于因势而为、心安守正。`;
+}
+
+readLunar();
+</script>
+</body>
+</html>
